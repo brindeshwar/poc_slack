@@ -1,0 +1,15 @@
+# Slack Bot Framework and SDK
+slack-bolt>=1.18.0
+slack-sdk>=3.21.0
+
+# Web Framework
+fastapi>=0.104.0
+
+# Google Generative AI
+google-generativeai>=0.3.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Additional dependencies that may be needed for FastAPI deployment
+uvicorn>=0.24.0
