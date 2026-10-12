@@ -1,0 +1,40 @@
+display_information:
+  name: ListenLoom
+  description: Ask about your meetings and turn action items into Jira tasks.
+  background_color: "#2c2d30"
+features:
+  bot_user:
+    display_name: ListenLoom
+    always_online: true
+  slash_commands:
+    - command: /lastmeetingsummary
+      description: Summary of the most recent meeting
+      should_escape: false
+    - command: /lastmeetingtodo
+      description: Action items from the most recent meeting
+      should_escape: false
+    - command: /lastmeetinguserstory
+      description: User stories from the most recent meeting
+      should_escape: false
+    - command: /meetingtojira
+      description: Create Jira tasks from the latest meeting's action items
+      usage_hint: "[preview]"
+      should_escape: false
+oauth_config:
+  # Only used in HTTP mode; replace with your public URL.
+  redirect_urls:
+    - https://your-host.example.com/slack/oauth_redirect
+  scopes:
+    bot:
+      - app_mentions:read
+      - chat:write
+      - commands
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

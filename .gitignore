@@ -1,15 +1,17 @@
 .env
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+.venv/
 venv/
 env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
 dist/
 build/
+*.egg-info
 *.db
 *.sqlite3
 .DS_Store
 node_modules/
+# OAuth installations contain bot tokens
 installations/
-installations/none-T07FPB4TJNM/
