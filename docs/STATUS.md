@@ -12,11 +12,11 @@
 | Bolt app builds in HTTP mode; config validation | ✅ verified | 2026-10-13 |
 | Real Slack workspace (Socket Mode) | ⛔ not verified: tokens need rotating; app needs `chat:write` + `commands` | 2026-10-13 |
 | Gemini agent live | ⛔ not verified: Gemini key invalid | 2026-10-13 |
-| Docker image | ⚠️ not built locally (Docker daemon not running); CI `docker` job builds it | 2026-10-13 |
+| Docker image | ✅ builds in CI (`Docker build` job, required check) | 2026-10-13 |
 
 ## Current version
 
-`0.2.0` (unreleased; branch `refactor/v2-connected-system`).
+`0.2.0`, released 2026-10-13 (tag `v0.2.0`, GitHub release).
 
 ## Known issues / blockers
 
@@ -46,8 +46,22 @@
 | 2026-10-13 | Bolt's built-in OAuth instead of a custom flow | v1's custom flow was never wired; less code, maintained upstream |
 | 2026-10-13 | Placeholder message + `chat_update` for mentions | instant feedback; agent runs can take seconds |
 | 2026-10-13 | Slash command results `in_channel`, errors `ephemeral` | share useful output; don't spam errors |
+| 2026-10-13 | Protect `main`: PR + 5 required checks, linear history, rebase-only merges, 0 approvals | keeps `main` always green; linear history keeps the Conventional Commits readable; solo maintainer can't self-approve |
 
 ## Handoff log
+
+### 2026-10-13: Claude (Opus 5.5) · v0.2.0 released, branch protection
+**Changed:** merged the v2 PR (rebase), tagged `v0.1.0` (original POC) and `v0.2.0`, and published the
+GitHub release. Protected `main`: PR required, 5 required checks (lint, tests 3.12/3.13, secret scan,
+Docker build) that must be up to date, linear history, conversation resolution, no force-push or
+deletion, enforced for admins. 0 approvals required (solo maintainer; GitHub forbids self-approval).
+Rebase merge is the only merge method; merged branches are auto-deleted.
+
+**Verified:** CI green on the PR and on `main` after merge; protection settings read back from the
+GitHub API.
+
+**Next agent:** unchanged. Live verification is blocked on a valid Gemini key (and Jira site / Slack
+token rotation; see Known issues). All changes now go through a PR.
 
 ### 2026-10-13: Claude (Opus 5.5) · v2 rebuild + project infrastructure
 **Changed:** removed the v1 code (`slack_logic.py`, `data_store.py`, `requirements.txt`); rewrote the bot into `src/slack_bot` (MCP client, Gemini agent, Bolt OAuth, Block Kit).

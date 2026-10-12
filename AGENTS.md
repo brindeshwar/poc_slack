@@ -76,6 +76,9 @@ manifest.yml     Slack app definition (scopes, slash commands, events). Keep it 
 
 ## 5. Workflow
 
+**`main` is protected:** every change goes through a PR with green, up-to-date CI (lint, tests 3.12/3.13,
+secret scan, Docker build) and is rebase-merged. Never push to `main` directly or force-push.
+
 Branches `feat/…`, `fix/…`, `docs/…`, `chore/…`, `refactor/…`, `ci/…`. Conventional Commits. PRs use the
 template and need green CI. User-visible changes go under `[Unreleased]` in `CHANGELOG.md`.
 
