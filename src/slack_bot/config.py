@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     mcp_server_url: str = "http://127.0.0.1:8001/mcp"
 
     google_api_key: SecretStr
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
+    # minimal | low | medium | high. "low" helps the agent pick tools reliably at Flash-Lite cost.
+    gemini_thinking_level: Literal["minimal", "low", "medium", "high"] = "low"
 
     host: str = "127.0.0.1"
     port: int = 3000
