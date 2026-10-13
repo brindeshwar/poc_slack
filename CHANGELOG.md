@@ -5,7 +5,21 @@ All notable changes to this project are documented here. Format:
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-13
+
+### Added
+- **Streaming answers:** mentions stream the agent's answer into the thread with Slack's native chat
+  streaming, with a status line ("Searching meetings…", "Talking to Jira…") while tools run.
+- **Thread follow-ups:** mentions inside a thread include up to 20 earlier messages as context.
+
 ### Changed
+- Default model is `gemini-3.5-flash-lite` with `GEMINI_THINKING_LEVEL` (default `low`). The 2.5
+  models are closed to new projects.
+- **BREAKING (Slack app config):** new bot scopes `channels:history`, `groups:history` and
+  `assistant:write`. Apply `manifest.yml` and reinstall.
+- The placeholder-then-edit flow and the Markdown→mrkdwn converter are removed; streaming renders
+  Markdown natively.
+- Python 3.14 added to CI; the Docker image uses Python 3.14.
 - Upgraded to `mcp` 2.x: `HubClient` uses the high-level `mcp.Client`; result and tool fields are
   snake_case (`is_error`, `structured_content`, `input_schema`). No behaviour change.
 - Upgraded `google-genai` to 2.x (its breaking changes only affect the Interactions API, which isn't used).
@@ -46,6 +60,7 @@ Full rewrite as a client of the ListenLoom meeting hub (MCP).
 
 - Initial internship proof of concept.
 
-[Unreleased]: https://github.com/brindeshwar/poc_slack/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/brindeshwar/poc_slack/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/brindeshwar/poc_slack/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/brindeshwar/poc_slack/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/brindeshwar/poc_slack/releases/tag/v0.1.0

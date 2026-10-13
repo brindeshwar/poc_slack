@@ -24,13 +24,16 @@ Slack ──► this bot ──MCP (HTTP)──► Meeting hub ──► MongoDB
 | `/lastmeetinguserstory` | User stories that came up |
 | `/meetingtojira [preview]` | Create (or preview) Jira tasks for the latest meeting's action items |
 
-Mentions get an immediate "Looking through your meetings…" reply in the thread, which is then
-replaced by the answer. Errors are shown as friendly messages, and details go to the log, not the channel.
+Mentions **stream** their answer into the thread as it is generated, with a status line ("Searching
+meetings…", "Talking to Jira…") while tools run. Inside a thread, the bot reads the earlier messages, so
+follow-ups like "and who owns that?" work. Errors are shown as friendly messages, and details go to the log,
+not the channel. Model: `gemini-3.5-flash-lite`.
 
 ## Setup
 
 1. **Create the Slack app** from [`manifest.yml`](manifest.yml): <https://api.slack.com/apps> → *Create
-   New App* → *From a manifest*. It sets the scopes (`app_mentions:read`, `chat:write`, `commands`),
+   New App* → *From a manifest*. It sets the scopes (`app_mentions:read`, `chat:write`, `commands`,
+   `channels:history`, `groups:history`, `assistant:write`),
    the slash commands and the event subscription.
 2. **Pick a mode:**
    - **Socket mode** (default, no public URL): install the app to your workspace, then copy the Bot
@@ -61,9 +64,9 @@ uv run ruff check .
 src/slack_bot/
   app.py         builds the Bolt app (socket or HTTP+OAuth) and starts it
   handlers.py    slash commands + @mention logic (plain functions, unit-tested)
-  agent.py       Gemini function-calling loop over the hub's MCP tools
+  agent.py       streamed Gemini function calling over the hub's MCP tools
   hub.py         MCP client for the meeting hub
-  formatting.py  Block Kit builders, Markdown → Slack mrkdwn
+  formatting.py  Block Kit builders for slash commands
   config.py      settings from environment / .env
 manifest.yml     Slack app definition
 ```
