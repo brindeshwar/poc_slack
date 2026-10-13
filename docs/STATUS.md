@@ -50,6 +50,14 @@
 
 ## Handoff log
 
+### 2026-10-13: Claude (Opus 5.5) · dependency upgrades (Dependabot triage)
+**Changed:** migrated `HubClient`/agent to `mcp` 2.3 (`mcp.Client`, snake_case fields) and `google-genai` 2.x. CI actions moved to their Node 24 majors.
+
+**Verified:** release notes reviewed for every major bump; pytest (19); live: HubClient against the hub running mcp 2.3 (tool listing, Gemini declarations from `input_schema`, tool errors, outage).
+
+**Next agent:** Dependabot's superseded PRs close automatically after merge. Future major bumps need the
+same review (CI alone isn't enough where tests use fakes, e.g. Gemini).
+
 ### 2026-10-13: Claude (Opus 5.5) · v0.2.0 released, branch protection
 **Changed:** merged the v2 PR (rebase), tagged `v0.1.0` (original POC) and `v0.2.0`, and published the
 GitHub release. Protected `main`: PR required, 5 required checks (lint, tests 3.12/3.13, secret scan,
