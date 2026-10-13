@@ -42,9 +42,9 @@ bot relies on).
 src/slack_bot/
   app.py         build_bolt_app(settings): Socket Mode (single token) or HTTP + Bolt OAuth; main()
   handlers.py    meeting_command / jira_command / answer_mention: plain async functions; register() wires Bolt
-  agent.py       MeetingAgent: Gemini function-calling loop over the hub's MCP tools (max 6 steps)
+  agent.py       MeetingAgent.stream(): streamed Gemini function calling over the hub's MCP tools (max 6 steps)
   hub.py         HubClient: MCP Streamable HTTP client; HubError for tool errors and outages
-  formatting.py  Block Kit builders, mrkdwn escaping, Markdown → mrkdwn
+  formatting.py  Block Kit builders for slash commands, mrkdwn escaping, truncation
   config.py      Settings: the ONLY place env vars are read; validates per-mode requirements
 tests/           conftest.py (FakeHub, Recorder); tests for handlers, agent, formatting
 manifest.yml     Slack app definition (scopes, slash commands, events). Keep it in sync with handlers.py
@@ -64,6 +64,13 @@ manifest.yml     Slack app definition (scopes, slash commands, events). Keep it 
   prefers `dry_run` for "what would…" questions. Keep that guarantee if you edit `SYSTEM_PROMPT`.
 - **User-facing errors:** friendly text in Slack, details in logs. Never post stack traces or raw
   exception text from unexpected errors into a channel.
+- **Streaming:** mentions answer via Bolt's `say_stream` (chat streaming, Markdown) with `set_status`
+  updates between tool calls. Always `stop()` the stream (the handler does it in `finally`). Status
+  failures must never break an answer.
+- **Gemini 3 thought signatures:** `MeetingAgent.stream` appends every streamed part back to the
+  conversation unchanged. Don't filter or rebuild model parts, or multi-step tool calls break.
+- **Model:** `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) with `GEMINI_THINKING_LEVEL` (default
+  `low`). Never hardcode model IDs elsewhere.
 - **Slack limits:** section text ≤ 3000 chars (use `formatting.section`); escape `& < >` in
   user or LLM content with `formatting.escape`; ack slash commands immediately (Bolt requires
   < 3s).
