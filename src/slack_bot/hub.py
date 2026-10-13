@@ -5,8 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, Protocol
 
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp import Client
 from mcp.types import CallToolResult, Tool
 
 
@@ -21,15 +20,15 @@ class HubSession(Protocol):
 
 
 class _McpHubSession:
-    def __init__(self, session: ClientSession) -> None:
-        self._session = session
+    def __init__(self, client: Client) -> None:
+        self._client = client
 
     async def list_tools(self) -> list[Tool]:
-        return (await self._session.list_tools()).tools
+        return (await self._client.list_tools()).tools
 
     async def call(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
-        result = await self._session.call_tool(name, arguments or {})
-        if result.isError:
+        result = await self._client.call_tool(name, arguments or {})
+        if result.is_error:
             raise HubError(_text(result) or f"Tool '{name}' failed")
         return unwrap(result)
 
@@ -46,13 +45,9 @@ class HubClient:
         the `async with` block propagate unchanged."""
         in_body = False
         try:
-            async with (
-                streamablehttp_client(self.server_url) as (read, write, _),
-                ClientSession(read, write) as session,
-            ):
-                await session.initialize()
+            async with Client(self.server_url) as client:
                 in_body = True
-                yield _McpHubSession(session)
+                yield _McpHubSession(client)
         except Exception as exc:
             inner = _single(exc)
             if in_body or isinstance(inner, HubError):
@@ -65,8 +60,8 @@ class HubClient:
 
 
 def unwrap(result: CallToolResult) -> Any:
-    """FastMCP returns structured content; non-object results are wrapped as {"result": ...}."""
-    structured = result.structuredContent
+    """MCPServer returns structured content; non-object results are wrapped as {"result": ...}."""
+    structured = result.structured_content
     if structured is None:
         text = _text(result)
         try:
