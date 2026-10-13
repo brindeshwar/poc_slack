@@ -16,7 +16,14 @@ from slack_bot.hub import HubClient
 
 logger = logging.getLogger(__name__)
 
-BOT_SCOPES = ["app_mentions:read", "chat:write", "commands"]
+BOT_SCOPES = [
+    "app_mentions:read",
+    "chat:write",
+    "commands",
+    "channels:history",
+    "groups:history",
+    "assistant:write",
+]
 
 
 def build_bolt_app(settings: Settings) -> AsyncApp:
@@ -49,7 +56,10 @@ def build_bolt_app(settings: Settings) -> AsyncApp:
 
     hub = HubClient(settings.mcp_server_url)
     agent = MeetingAgent(
-        hub, api_key=settings.google_api_key.get_secret_value(), model=settings.gemini_model
+        hub,
+        api_key=settings.google_api_key.get_secret_value(),
+        model=settings.gemini_model,
+        thinking_level=settings.gemini_thinking_level,
     )
     register(app, hub, agent)
     return app

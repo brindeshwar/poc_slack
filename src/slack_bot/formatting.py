@@ -1,6 +1,5 @@
 """Turn hub results into Slack Block Kit messages."""
 
-import re
 from typing import Any
 
 SECTION_LIMIT = 2900  # Slack rejects section text over 3000 characters
@@ -81,17 +80,3 @@ def jira_blocks(result: dict[str, Any]) -> list[dict[str, Any]]:
     if lines:
         blocks.append(section("\n".join(lines)))
     return blocks
-
-
-_BOLD = re.compile(r"\*\*(.+?)\*\*")
-_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
-_HEADING = re.compile(r"^#{1,6}\s+(.+)$", re.MULTILINE)
-_BULLET = re.compile(r"^(\s*)[-*]\s+", re.MULTILINE)
-
-
-def markdown_to_mrkdwn(text: str) -> str:
-    """LLMs often answer in Markdown even when asked not to; convert the common bits."""
-    text = _HEADING.sub(r"**\1**", text)
-    text = _BULLET.sub(r"\1• ", text)
-    text = _BOLD.sub(r"*\1*", text)
-    return _LINK.sub(r"<\2|\1>", text)
