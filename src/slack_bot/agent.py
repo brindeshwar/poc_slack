@@ -57,7 +57,7 @@ class MeetingAgent:
                             types.FunctionDeclaration(
                                 name=t.name,
                                 description=t.description or "",
-                                parameters_json_schema=t.inputSchema,
+                                parameters_json_schema=t.input_schema,
                             )
                             for t in mcp_tools
                         ]
