@@ -5,6 +5,28 @@ All notable changes to this project are documented here. Format:
 
 ## [Unreleased]
 
+### Added
+- **Agent sessions:** `agents.sessions.setStatus` drives Slack's native *Working…* indicator, with a
+  fallback to the legacy status for apps not yet declared as agents.
+- **Stop button:** handling `agent_session_stopped` cancels the running answer, which ends cleanly with
+  *Stopped.*
+- **Task cards:** each tool call shows as a `task_update` card in the streamed answer.
+- **Feedback buttons** (👍 / 👎) under every answer.
+- **Direct messages** to the agent (`message.im`, Agent messaging experience).
+- **Streaming limits:** answers roll over to a new streamed message before Slack's 12,000-character
+  limit, and fall back to `chat.postMessage` after the 10-minute stream timeout.
+- `MCP_AUTH_TOKEN` is sent to the meeting hub when it requires auth.
+
+### Changed
+- **BREAKING (Slack app config):** the manifest declares the app as an agent (`agent_view`), adds
+  `im:history`, the `message.im` and `agent_session_stopped` events and interactivity, and marks the
+  history scopes as optional (`bot_optional`). Apply it and reinstall.
+- Thread history is capped at 15 messages, the limit for non-Marketplace distributed apps, and
+  rate-limited history calls are skipped.
+- The status-line strings are replaced by task cards. `assistant:write` is now only present because Slack
+  adds it for agents.
+- slack-sdk ≥ 3.46.
+
 ## [0.3.0] - 2026-10-13
 
 ### Added

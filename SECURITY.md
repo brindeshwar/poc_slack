@@ -27,3 +27,14 @@ may already have them.
 - The bot never posts raw exception text from unexpected errors to Slack, since it could include
   internal details. Details go to logs only.
 - If a secret is committed, rotate it first, then clean the history.
+
+## Slack data and third parties
+
+Slack's API Terms (May and October 2025) restrict how apps store, use and share data from Slack APIs:
+
+- **The bot stores nothing from Slack.** It reads up to 15 earlier messages of a thread only to answer the
+  current question, and sends them to the configured LLM (Google Gemini) as part of that request.
+- **Use a paid Gemini tier**, or keep the bot internal to your own workspace. On the Gemini API's free tier,
+  Google may use prompts to improve its products, which isn't appropriate for other organisations' Slack
+  data.
+- **Commercial distribution** of a Slack app is only allowed through the Slack Marketplace.
