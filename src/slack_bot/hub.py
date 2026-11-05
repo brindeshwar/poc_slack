@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from typing import Any, Protocol
 
 from mcp import Client
+from mcp.client.streamable_http import streamable_http_client
+from mcp.shared._httpx_utils import create_mcp_http_client
 from mcp.types import CallToolResult, Tool
 
 
@@ -34,8 +36,16 @@ class _McpHubSession:
 
 
 class HubClient:
-    def __init__(self, server_url: str) -> None:
+    def __init__(self, server_url: str, token: str | None = None) -> None:
         self.server_url = server_url
+        self._token = token
+
+    def _client(self) -> Client:
+        """Sends `Authorization: Bearer <MCP_AUTH_TOKEN>` when the hub requires it."""
+        if not self._token:
+            return Client(self.server_url)
+        http = create_mcp_http_client(headers={"Authorization": f"Bearer {self._token}"})
+        return Client(streamable_http_client(self.server_url, http_client=http))
 
     @asynccontextmanager
     async def connect(self) -> AsyncIterator[HubSession]:
@@ -45,13 +55,17 @@ class HubClient:
         the `async with` block propagate unchanged."""
         in_body = False
         try:
-            async with Client(self.server_url) as client:
+            async with self._client() as client:
                 in_body = True
                 yield _McpHubSession(client)
         except Exception as exc:
             inner = _single(exc)
             if in_body or isinstance(inner, HubError):
                 raise inner from None
+            if "error response" in str(inner):  # e.g. 401: the SDK reports it generically
+                raise HubError(
+                    "The meeting hub refused the session (usually a wrong or missing MCP_AUTH_TOKEN)."
+                ) from exc
             raise HubError(f"Meeting hub unavailable ({self.server_url}): {inner}") from exc
 
     async def call(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
