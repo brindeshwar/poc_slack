@@ -18,11 +18,12 @@ logger = logging.getLogger(__name__)
 
 BOT_SCOPES = [
     "app_mentions:read",
-    "chat:write",
+    "chat:write",  # messages, streaming, agent sessions, status
     "commands",
-    "channels:history",
-    "groups:history",
-    "assistant:write",
+    "assistant:write",  # added by Slack when the app is declared as an agent
+    "channels:history",  # optional: thread follow-ups in public channels
+    "groups:history",  # optional: ... and private channels
+    "im:history",  # optional: answering DMs
 ]
 
 
@@ -54,7 +55,10 @@ def build_bolt_app(settings: Settings) -> AsyncApp:
             ),
         )
 
-    hub = HubClient(settings.mcp_server_url)
+    hub = HubClient(
+        settings.mcp_server_url,
+        token=settings.mcp_auth_token.get_secret_value() if settings.mcp_auth_token else None,
+    )
     agent = MeetingAgent(
         hub,
         api_key=settings.google_api_key.get_secret_value(),
