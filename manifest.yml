@@ -1,11 +1,33 @@
+# ListenLoom Slack app manifest (Slack platform, November 2026).
+# Apply it in https://api.slack.com/apps → your app → App Manifest, then reinstall the app.
+_metadata:
+  major_version: 2
+  minor_version: 1
 display_information:
   name: ListenLoom
   description: Ask about your meetings and turn action items into Jira tasks.
+  long_description: >-
+    ListenLoom answers questions about your team's meetings right in Slack. Mention it in a channel or
+    message it directly: it searches the stored meeting transcripts, streams a grounded answer with the
+    steps it took, and can preview or create Jira tickets for the action items when you ask. Slash
+    commands give the latest meeting's summary, to-do list and user stories.
   background_color: "#2c2d30"
 features:
   bot_user:
     display_name: ListenLoom
     always_online: true
+  # Declares the app as an agent (Agent messaging experience). This enables agent sessions (native
+  # "Working…" status and stop button) and DMs with the agent. Note: switching an existing app from
+  # assistant_view to agent_view cannot be reversed; this app never used assistant_view.
+  agent_view:
+    agent_description: Answers questions about your meetings and turns action items into Jira tasks.
+    suggested_prompts:
+      - title: Latest meeting
+        message: What was decided in the latest meeting?
+      - title: Action items
+        message: What are the action items from the last meeting, and who owns them?
+      - title: Preview Jira tickets
+        message: Which Jira tickets would the last meeting's action items create? (preview only)
   slash_commands:
     - command: /lastmeetingsummary
       description: Summary of the most recent meeting
@@ -27,17 +49,35 @@ oauth_config:
   scopes:
     bot:
       - app_mentions:read
-      - chat:write          # also covers chat.startStream / appendStream / stopStream
+      - chat:write          # messages, chat.*Stream, agents.sessions.setStatus, status
       - commands
-      - channels:history    # thread follow-ups: read earlier messages in public channels
-      - groups:history      # ...and in private channels the bot is in
-      - assistant:write     # the "Searching meetings…" status line
+      - assistant:write     # added by Slack when the app is declared as an agent (agent_view)
+      - channels:history    # thread follow-ups in public channels
+      - groups:history      # ...and private channels the bot is in
+      - im:history          # DMs with the agent
+      # - mcp:connect       # uncomment together with mcp_servers below (Slackbot MCP client)
+    # Users/admins may decline these; the bot still works (no thread context / no DMs).
+    bot_optional:
+      - channels:history
+      - groups:history
+      - im:history
+      # - mcp:connect
 settings:
   event_subscriptions:
     bot_events:
       - app_mention
+      - message.im              # DMs with the agent
+      - agent_session_stopped   # native stop button while an answer is being generated
   interactivity:
-    is_enabled: false
+    is_enabled: true            # feedback buttons (Socket Mode needs no request URL)
   org_deploy_enabled: false
   socket_mode_enabled: true
   token_rotation_enabled: false
+# Slackbot MCP client: lets Slackbot itself call the meeting hub's tools (see poc_mcp README,
+# "Use it from Slackbot"). Requires the hub at a public HTTPS URL with SLACK_SIGNING_SECRET set to
+# this app's signing secret. Uncomment, set the URL, and uncomment mcp:connect above.
+# mcp_servers:
+#   listenloom:
+#     url: https://your-hub.example.com/mcp
+#     auth_type: slack_identity_auth
+#     icon_emoji: ":spiral_note_pad:"

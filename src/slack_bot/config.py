@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     installation_dir: str = "./installations"
 
     mcp_server_url: str = "http://127.0.0.1:8001/mcp"
+    mcp_auth_token: SecretStr | None = None  # same value as the hub's MCP_AUTH_TOKEN
 
     google_api_key: SecretStr
     gemini_model: str = "gemini-3.5-flash-lite"

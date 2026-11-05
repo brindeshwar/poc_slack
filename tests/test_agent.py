@@ -4,8 +4,9 @@ from slack_bot.agent import (
     NO_ANSWER_REPLY,
     STEP_LIMIT_REPLY,
     MeetingAgent,
-    Status,
     TextDelta,
+    ToolFinished,
+    ToolStarted,
 )
 from slack_bot.hub import HubError
 from tests.conftest import FakeHub
@@ -84,7 +85,11 @@ async def test_status_before_tool_call_then_result_fed_back():
     )
     events = await collect(MeetingAgent(hub, client=gemini), "who owns rollback?")
 
-    assert events == [Status("Searching meetings…", "ask_meetings"), TextDelta("Eve.")]
+    assert events == [
+        ToolStarted("tool-1", "ask_meetings", "Searching meetings"),
+        ToolFinished("tool-1", "ask_meetings", "Searching meetings", ok=True),
+        TextDelta("Eve."),
+    ]
     assert hub.calls == [("ask_meetings", {"question": "rollback owner"})]
     contents, _ = gemini.requests[1]
     assert contents[-1].parts[0].function_response.response == {
@@ -128,12 +133,18 @@ async def test_tool_errors_are_given_to_the_model():
     gemini = FakeGemini(
         [[chunk(call("get_latest_meeting", {}))], [chunk(text("There are no meetings yet."))]]
     )
-    reply = await MeetingAgent(hub, client=gemini).run("last meeting?")
+    agent = MeetingAgent(hub, client=gemini)
+    events = await collect(agent, "last meeting?")
     contents, _ = gemini.requests[1]
     assert contents[-1].parts[0].function_response.response == {
         "error": "No meetings have been stored yet."
     }
-    assert reply.text == "There are no meetings yet."
+    assert (
+        ToolFinished("tool-1", "get_latest_meeting", "Reading the latest meeting", ok=False)
+        in events
+    )
+    reply_text = "".join(e.text for e in events if isinstance(e, TextDelta))
+    assert reply_text == "There are no meetings yet."
 
 
 async def test_empty_answer_gets_a_fallback():

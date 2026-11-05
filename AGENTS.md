@@ -41,7 +41,10 @@ bot relies on).
 ```
 src/slack_bot/
   app.py         build_bolt_app(settings): Socket Mode (single token) or HTTP + Bolt OAuth; main()
-  handlers.py    meeting_command / jira_command / answer_mention: plain async functions; register() wires Bolt
+  handlers.py    meeting_command / jira_command / answer (mentions + DMs) / stop_answer / record_feedback;
+                 register() wires Bolt (app_mention, message.im, agent_session_stopped, feedback action)
+  sessions.py    AgentSession (agents.sessions.setStatus, legacy fallback) and RunRegistry (stop button)
+  streaming.py   LimitedStream: task cards + text, 12k-char rollover, 10-min timeout fallback
   agent.py       MeetingAgent.stream(): streamed Gemini function calling over the hub's MCP tools (max 6 steps)
   hub.py         HubClient: MCP Streamable HTTP client; HubError for tool errors and outages
   formatting.py  Block Kit builders for slash commands, mrkdwn escaping, truncation
@@ -64,9 +67,19 @@ manifest.yml     Slack app definition (scopes, slash commands, events). Keep it 
   prefers `dry_run` for "what would…" questions. Keep that guarantee if you edit `SYSTEM_PROMPT`.
 - **User-facing errors:** friendly text in Slack, details in logs. Never post stack traces or raw
   exception text from unexpected errors into a channel.
-- **Streaming:** mentions answer via Bolt's `say_stream` (chat streaming, Markdown) with `set_status`
-  updates between tool calls. Always `stop()` the stream (the handler does it in `finally`). Status
-  failures must never break an answer.
+- **Agent UX (Slack, Nov 2026):** answers go through `handlers.answer`:
+  - status via `sessions.AgentSession`, which calls `agents.sessions.setStatus` and falls back to the legacy
+    `set_status`;
+  - text and task cards through `streaming.LimitedStream`, which handles the 12,000-character and 10-minute
+    limits;
+  - a stop button via `agent_session_stopped` + `RunRegistry`;
+  - feedback buttons.
+
+  Always finish the stream in `finally`. A status failure must never break an answer.
+- **Rate limits:** `conversations.replies` is capped at 15 messages and 1 call per minute for
+  non-Marketplace distributed apps. Keep `HISTORY_LIMIT` ≤ 15 and treat `ratelimited` as "no history".
+- **Don't add `assistant.threads.*` calls:** they're being replaced by `agents.sessions.*`, and
+  `assistant_view` is deprecated in February 2027. This app uses `agent_view`.
 - **Gemini 3 thought signatures:** `MeetingAgent.stream` appends every streamed part back to the
   conversation unchanged. Don't filter or rebuild model parts, or multi-step tool calls break.
 - **Model:** `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) with `GEMINI_THINKING_LEVEL` (default

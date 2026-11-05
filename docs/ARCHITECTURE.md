@@ -35,23 +35,37 @@ caller sees them). `respond` uses the response URL, so the bot doesn't need to b
 **`/meetingtojira [preview]`**: `preview` → `dry_run=true`. Results show status, a ticket link, and
 any assignee warnings.
 
-**Mention** (streamed):
-1. Strip the bot's own mention. An empty question gets the help text.
-2. **Thread follow-ups:** if the mention is inside a thread, read earlier messages with
-   `conversations.replies` (≤ 20 messages, ≤ 6,000 chars, most recent kept). Bot messages become `model`
-   turns and people's messages become `user` turns. A missing `channels:history` scope just means no history.
-3. `set_status("Thinking…")`, then open Bolt's `say_stream()` (`chat.startStream` in the thread,
-   addressed to the asking user).
-4. `MeetingAgent.stream(question, history)` opens one MCP session and streams each Gemini step:
-   - **text parts** → `stream.append(markdown_text=…)` immediately (thought parts are never shown);
-   - **function calls** → `set_status("Searching meetings…")` etc., then call the hub tool. Every part
-     of the step, including Gemini 3 **thought signatures**, goes back into the conversation unchanged.
-     Tool errors are passed to the model as `{"error": …}`.
-5. `stream.stop()` in `finally`. A `HubError` appends a "couldn't reach the hub" line; any other exception
-   appends a generic message (details are logged, never posted).
+**Mention or DM** (`handlers.answer`, streamed):
+1. Strip the bot's own mention. An empty question gets the help text. DMs (`message.im`) take the same path
+   via `is_user_dm`, which skips edits, joins and our own messages.
+2. **Thread follow-ups:** in a thread, read earlier messages with `conversations.replies`, at most 15
+   messages, the cap for non-Marketplace distributed apps. The text is limited to 6,000 characters, most
+   recent kept. Bot messages become `model` turns, people's become `user` turns. A rate limit or missing
+   optional scope just means no history.
+3. **Agent session:** `agents.sessions.setStatus(processing, title=question)` gives Slack's native
+   *Working…* UI and stop button. If the app isn't declared as an agent, this falls back once to Bolt's
+   `set_status`, the legacy `assistant.threads.setStatus` call, which Slack keeps through its compatibility bridge.
+4. `MeetingAgent.stream(question, history)` streams each Gemini step into a `LimitedStream` (Bolt's
+   `say_stream`):
+   - **text parts** → appended as Markdown immediately (thought parts are never shown);
+   - **tool calls** → a `task_update` chunk (*Searching meetings* · in_progress → complete/error) around the
+     hub call. Every part of the step, including Gemini 3 **thought signatures**, goes back into the
+     conversation unchanged, and tool errors reach the model as `{"error": …}`.
+5. `finish()` in `finally`: `chat.stopStream(session_status="active", blocks=[feedback buttons])`. A
+   `HubError` appends a "couldn't reach the hub" line; other exceptions append a generic message (details
+   are logged, never posted).
 
-Status updates use `assistant.threads.setStatus` (`assistant:write`). If that fails, the answer still
-streams.
+**Stop button:** the running answer registers its task in `RunRegistry` under (channel, thread). An
+`agent_session_stopped` event cancels it. The answer catches the cancellation, appends *Stopped.* and still
+closes the stream. If nothing is running, the session is simply set to `active`.
+
+**Streaming limits** (`streaming.LimitedStream`): Slack allows 12,000 Markdown characters and 10 minutes per
+streamed message. At about 11,000 characters the stream is stopped with `session_status="processing"` and a
+new one continues in the same thread. `msg_too_long` triggers the same rollover, and
+`message_not_in_streaming_state` (timeout) switches to `chat.postMessage`.
+
+**Feedback:** `feedback_buttons` (action `answer_feedback`) are logged and acknowledged with an ephemeral
+"Thanks".
 
 ## Why the agent discovers tools dynamically
 
@@ -67,8 +81,12 @@ because their output format depends on the result shape.
 | Public URL | not needed | needed (`/slack/events`, `/slack/install`, `/slack/oauth_redirect`) |
 | Auth | `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN` | signing secret + client ID/secret; installs in `INSTALLATION_DIR` |
 
-Scopes (both modes): `app_mentions:read`, `chat:write` (incl. streaming), `commands`,
-`channels:history` + `groups:history` (thread follow-ups), `assistant:write` (status line). See `manifest.yml`.
+Scopes (both modes): `app_mentions:read`, `chat:write` (messages, streaming, sessions, status), `commands`,
+`assistant:write` (added by Slack when the app is declared an agent), and the **optional** (`bot_optional`)
+`channels:history` / `groups:history` (thread follow-ups) and `im:history` (DMs). See `manifest.yml`.
+
+Socket Mode suits development and internal use. Slack recommends HTTP for production, and Socket Mode apps
+can't be listed on the Marketplace, which is the only allowed channel for commercial distribution.
 
 ## Models
 

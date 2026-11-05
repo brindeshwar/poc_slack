@@ -25,15 +25,15 @@ Reply in concise Markdown (bold, bullet lists, links)."""
 STEP_LIMIT_REPLY = "Sorry, that took too many steps. Could you ask a more specific question?"
 NO_ANSWER_REPLY = "I don't have an answer for that."
 
-# What the user sees in Slack's status line while a tool runs.
-TOOL_STATUS = {
-    "ask_meetings": "Searching meetings…",
-    "search_meetings": "Searching meetings…",
-    "get_latest_meeting": "Reading the latest meeting…",
-    "list_meetings": "Looking through meetings…",
-    "get_meeting": "Reading the meeting…",
-    "create_jira_tasks": "Talking to Jira…",
-    "ingest_meeting": "Saving the meeting…",
+# Task-card titles shown in the streamed answer while each tool runs.
+TOOL_TITLES = {
+    "ask_meetings": "Searching meetings",
+    "search_meetings": "Searching meetings",
+    "get_latest_meeting": "Reading the latest meeting",
+    "list_meetings": "Looking through meetings",
+    "get_meeting": "Reading the meeting",
+    "create_jira_tasks": "Talking to Jira",
+    "ingest_meeting": "Saving the meeting",
 }
 
 ThinkingLevel = Literal["minimal", "low", "medium", "high"]
@@ -41,11 +41,20 @@ Turn = tuple[Literal["user", "model"], str]
 
 
 @dataclass(frozen=True)
-class Status:
-    """A tool is about to run."""
+class ToolStarted:
+    """A tool is about to run. `id` is unique within one answer."""
 
-    text: str
+    id: str
     tool: str
+    title: str
+
+
+@dataclass(frozen=True)
+class ToolFinished:
+    id: str
+    tool: str
+    title: str
+    ok: bool
 
 
 @dataclass(frozen=True)
@@ -55,7 +64,7 @@ class TextDelta:
     text: str
 
 
-AgentEvent = Status | TextDelta
+AgentEvent = ToolStarted | ToolFinished | TextDelta
 
 
 @dataclass
@@ -86,7 +95,8 @@ class MeetingAgent:
     async def stream(
         self, question: str, history: Sequence[Turn] = ()
     ) -> AsyncIterator[AgentEvent]:
-        """Answer `question`, yielding Status events before tool calls and the answer as TextDeltas.
+        """Answer `question`, yielding ToolStarted/ToolFinished around tool calls and the answer
+        as TextDeltas.
 
         Each model step is streamed. Every part the model returns is kept and sent back verbatim,
         which preserves Gemini 3 thought signatures across function-calling turns."""
@@ -97,6 +107,7 @@ class MeetingAgent:
                 for role, text in history
             ]
             contents.append(types.Content(role="user", parts=[types.Part.from_text(text=question)]))
+            call_number = 0
 
             for _ in range(self._max_steps):
                 parts: list[types.Part] = []
@@ -124,12 +135,14 @@ class MeetingAgent:
                 replies = []
                 for call in calls:
                     name = call.name or ""
-                    yield Status(TOOL_STATUS.get(name, "Working…"), name)
-                    replies.append(
-                        types.Part.from_function_response(
-                            name=name, response=await self._call_tool(session, name, call.args)
-                        )
+                    call_number += 1
+                    started = ToolStarted(
+                        f"tool-{call_number}", name, TOOL_TITLES.get(name, "Working")
                     )
+                    yield started
+                    response = await self._call_tool(session, name, call.args)
+                    yield ToolFinished(started.id, name, started.title, ok="error" not in response)
+                    replies.append(types.Part.from_function_response(name=name, response=response))
                 contents.append(types.Content(role="user", parts=replies))
 
         yield TextDelta(STEP_LIMIT_REPLY)
@@ -140,7 +153,7 @@ class MeetingAgent:
         async for event in self.stream(question, history):
             if isinstance(event, TextDelta):
                 text.append(event.text)
-            else:
+            elif isinstance(event, ToolStarted):
                 tools.append(event.tool)
         return AgentReply("".join(text).strip(), tools)
 
